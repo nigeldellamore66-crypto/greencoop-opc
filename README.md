@@ -38,7 +38,9 @@ Les données sont collectées depuis plusieurs sources hétérogènes (Excel, JS
 ### Organisation des données dans S3
 Les données sont stockées sous forme brute, sans transformation, selon la convention suivante :
 
-s3://<bucket-name>/source=<source_name>/station=<station_id>/dt=YYYY-MM-DD/data.json
+s3://green-and-coop-nigel/raw/infoclimat/fichier.json
+s3://green-and-coop-nigel/raw/weather-underground-ichtegem/fichier.json
+s3://green-and-coop-nigel/raw/weather-underground-madeleine/fichier.json
 
 
 Cette structure permet :
