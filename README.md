@@ -79,6 +79,25 @@ Les dépendances Python nécessaires au projet sont listées dans le fichier : r
 
 ---
 
+## Environnement
+Un fichier .env contenant les variables d'environnement suivantes est requis pour le fonctionnement du script:
+
+AWS_ACCESS_KEY_ID=XXX
+
+AWS_SECRET_ACCESS_KEY=XXX
+
+AWS_DEFAULT_REGION=XXX
+
+S3_BUCKET=green-and-coop-nigel
+
+INFOCLIMAT="raw/infoclimat/"
+
+ICHTEGEM="raw/weather-underground-ichtegem/"
+
+MADELEINE="raw/weather-underground-madeleine/"
+
+---
+
 ## Exécution
 1. Lancer la synchronisation Airbyte vers S3  
 2. Exécuter le script de transformation Python  
