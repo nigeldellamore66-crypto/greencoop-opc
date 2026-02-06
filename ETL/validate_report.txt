@@ -1,0 +1,197 @@
+
+--- VALIDATION RAW : Infoclimat - Metadata ---
+
+--- Infoclimat - Metadata ---
+Rows: 4
+Columns: 7
+Column names and types:
+id: str
+name: str
+latitude: float64
+longitude: float64
+elevation: int64
+type: str
+license: object
+
+Missing values:
+           missing  missing_pct
+id               0          0.0
+name             0          0.0
+latitude         0          0.0
+longitude        0          0.0
+elevation        0          0.0
+type             0          0.0
+license          0          0.0
+
+Duplicate full rows: 0
+
+Empty rows: 0
+
+Distinct values per column:
+ id           4
+name         4
+latitude     4
+longitude    4
+elevation    4
+license      4
+type         2
+dtype: int64
+
+--- VALIDATION RAW : Infoclimat - Data ---
+
+--- Infoclimat - Data ---
+Rows: 1143
+Columns: 15
+Column names and types:
+id_station: str
+dh_utc: str
+temperature: str
+pression: str
+humidite: str
+point_de_rosee: str
+visibilite: str
+vent_moyen: str
+vent_rafales: object
+vent_direction: str
+pluie_3h: str
+pluie_1h: str
+neige_au_sol: object
+nebulosite: str
+temps_omm: str
+
+Missing values:
+                missing  missing_pct
+neige_au_sol       1143       100.00
+temps_omm          1134        99.21
+visibilite         1083        94.75
+nebulosite         1083        94.75
+vent_rafales       1083        94.75
+pluie_3h           1052        92.04
+pluie_1h            900        78.74
+vent_direction       23         2.01
+humidite              0         0.00
+point_de_rosee        0         0.00
+
+Duplicate full rows: 0
+
+Empty rows: 0
+
+Distinct values per column:
+ dh_utc            361
+pression          232
+vent_direction    229
+temperature       158
+point_de_rosee    127
+vent_moyen        100
+humidite           45
+visibilite         30
+vent_rafales       14
+pluie_3h            9
+pluie_1h            8
+temps_omm           5
+nebulosite          5
+id_station          4
+neige_au_sol        1
+dtype: int64
+
+--- VALIDATION RAW : Ichtegem ---
+
+--- Ichtegem ---
+Rows: 1899
+Columns: 12
+Column names and types:
+Dew Point: str
+Speed: str
+Temperature: str
+Humidity: str
+UV: int64
+Wind: str
+Time: str
+Pressure: str
+Gust: str
+Solar: str
+Precip. Rate.: str
+Precip. Accum.: str
+
+Missing values:
+             missing  missing_pct
+Wind               7         0.37
+Dew Point          0         0.00
+Temperature        0         0.00
+Speed              0         0.00
+Humidity           0         0.00
+UV                 0         0.00
+Time               0         0.00
+Pressure           0         0.00
+Gust               0         0.00
+Solar              0         0.00
+
+Duplicate full rows: 0
+
+Empty rows: 0
+
+Distinct values per column:
+ Solar             796
+Time              291
+Temperature       270
+Dew Point         211
+Gust              142
+Speed             116
+Pressure           72
+Humidity           44
+Wind               17
+Precip. Accum.     15
+Precip. Rate.       8
+UV                  6
+dtype: int64
+
+--- VALIDATION RAW : La Madeleine ---
+
+--- La Madeleine ---
+Rows: 1908
+Columns: 12
+Column names and types:
+Dew Point: str
+Gust: str
+UV: int64
+Pressure: str
+Temperature: str
+Time: str
+Precip. Accum.: str
+Speed: str
+Precip. Rate.: str
+Humidity: str
+Solar: str
+Wind: str
+
+Missing values:
+                missing  missing_pct
+Wind                 58         3.04
+Dew Point             0         0.00
+UV                    0         0.00
+Gust                  0         0.00
+Pressure              0         0.00
+Temperature           0         0.00
+Precip. Accum.        0         0.00
+Time                  0         0.00
+Speed                 0         0.00
+Precip. Rate.         0         0.00
+
+Duplicate full rows: 0
+
+Empty rows: 0
+
+Distinct values per column:
+ Solar             633
+Time              288
+Temperature       242
+Dew Point         180
+Gust              145
+Pressure           70
+Speed              62
+Humidity           48
+Wind               16
+Precip. Accum.     14
+Precip. Rate.       8
+UV                  5
+dtype: int64
