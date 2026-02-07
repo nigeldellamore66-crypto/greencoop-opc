@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 from s3_client import s3_connection,s3_extract
 from validate import validate_raw
-from transform import split_infoclimat
+from transform import split_infoclimat,transform_wu_station,transform_infoclimat
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -28,9 +28,21 @@ df_ic_meta,df_ic_data=split_infoclimat(df_infoclimat)
 
 # Validation avant migration
 
-with open("validate_report.txt", "w", encoding="utf-8") as f:
-    validate_raw(df_ic_meta, "Infoclimat - Metadata", output=f)
-    validate_raw(df_ic_data, "Infoclimat - Data", output=f)
-    validate_raw(df_ichtegem, "Ichtegem", output=f)
-    validate_raw(df_madeleine, "La Madeleine", output=f)
-    print("\n Validation avant migration terminée — rapport disponible dans : validate_report.txt")
+#with open("validate_report.txt", "w", encoding="utf-8") as f:
+ #   validate_raw(df_ic_meta, "Infoclimat - Metadata", output=f)
+ #   validate_raw(df_ic_data, "Infoclimat - Data", output=f)
+  #  validate_raw(df_ichtegem, "Ichtegem", output=f)
+   # validate_raw(df_madeleine, "La Madeleine", output=f)
+    #print("\n Validation avant migration terminée — rapport disponible dans : validate_report.txt")
+
+
+df_ichtegem_trans=transform_wu_station(df_ichtegem,"IICHTE19")
+df_ichtegem_trans.info()
+print(df_ichtegem_trans.head(10))
+print(df_ichtegem_trans.tail(10))
+
+print(df_ic_data.columns.tolist())
+df_infoclimat_trans=transform_infoclimat(df_ic_data)
+df_infoclimat_trans.info()
+print(df_infoclimat_trans.head(10))
+print(df_infoclimat_trans.tail(10))
