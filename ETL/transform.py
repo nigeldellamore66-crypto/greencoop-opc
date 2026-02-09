@@ -18,24 +18,24 @@ def split_infoclimat(df_raw: pd.DataFrame):
 
     return df_meta, df_data
 
+def _strip_units(s: pd.Series) -> pd.Series:
+        # Enlève les unités + espaces, ....
+    return (
+        s.astype(str)
+            .str.replace("\u00a0", " ", regex=False)       # espace insécable
+            .str.replace(",", ".", regex=False)            # si jamais virgule décimale
+            .str.replace(r"[^0-9\.\-]+", "", regex=True)   # garde chiffres / . / -
+            .replace({"": None, "nan": None})
+    )
+
+def _to_float(s: pd.Series) -> pd.Series:
+    return pd.to_numeric(_strip_units(s), errors="coerce").round(2)
+
+def _to_int(s: pd.Series) -> pd.Series:
+    return pd.to_numeric(_strip_units(s), errors="coerce").astype("Int64")
+
 
 def transform_wu_station(df_raw: pd.DataFrame, station_id: str) -> pd.DataFrame:
-
-    def _strip_units(s: pd.Series) -> pd.Series:
-        # Enlève les unités + espaces, ....
-        return (
-            s.astype(str)
-                .str.replace("\u00a0", " ", regex=False)       # espace insécable
-                .str.replace(",", ".", regex=False)            # si jamais virgule décimale
-                .str.replace(r"[^0-9\.\-]+", "", regex=True)   # garde chiffres / . / -
-                .replace({"": None, "nan": None})
-        )
-
-    def _to_float(s: pd.Series) -> pd.Series:
-        return pd.to_numeric(_strip_units(s), errors="coerce").round(2)
-
-    def _to_int(s: pd.Series) -> pd.Series:
-        return pd.to_numeric(_strip_units(s), errors="coerce").astype("Int64")
 
     def _build_timestamp(df: pd.DataFrame, start_date: str = "2024-10-01", time_col: str = "Time") -> pd.Series:
 
@@ -56,8 +56,8 @@ def transform_wu_station(df_raw: pd.DataFrame, station_id: str) -> pd.DataFrame:
         )
 
         # Ajout de la timezone
-        ts = ts.dt.tz_localize("Europe/Paris")   # heure locale station
-        ts = ts.dt.tz_convert("UTC")             # format Infoclimat
+        #ts = ts.dt.tz_localize("Europe/Paris")   # heure locale station
+        #ts = ts.dt.tz_convert("UTC")             # format Infoclimat
 
         return ts
     
@@ -69,8 +69,16 @@ def transform_wu_station(df_raw: pd.DataFrame, station_id: str) -> pd.DataFrame:
             "S": 180.0, "SSW": 202.5, "SW": 225.0, "WSW": 247.5,
             "W": 270.0, "WNW": 292.5, "NW": 315.0, "NNW": 337.5,
         }
-        # normalise un peu (espaces, casse)
-        clean = s.astype(str).str.strip().str.upper()
+        # normalise un peu pour éviter des valeurs non définis dans le mapping
+        clean = (
+            s.astype(str)
+            .str.strip()
+            .str.upper()
+            .str.replace("WEST", "W")
+            .str.replace("EAST", "E")
+            .str.replace("SOUTH", "S")
+            .str.replace("NORTH", "N")
+        )        
         # Map remplace toutes les valeurs définis dans le mapping
         return clean.map(mapping)
     
@@ -135,26 +143,26 @@ def transform_infoclimat(df_raw: pd.DataFrame) -> pd.DataFrame:
     # Cleaning et renommage des différentes colonnes 
     if "id_station" in df.columns:
         df["station_id"] = df["id_station"]
-    if "timestamp_utc" in df.columns:
-        df["timestamp"] = df["timestamp_utc"]
+    if "dh_utc" in df.columns:
+        df["timestamp"] = pd.to_datetime(df["dh_utc"], errors="coerce")
     if "temperature" in df.columns:
-        df["temperature_c"] = df["temperature"]
+        df["temperature_c"] = _to_float(df["temperature"])
     if "point_de_rosee" in df.columns:
-        df["dew_point_c"] = df["point_de_rosee"]
+        df["dew_point_c"] = _to_float(df["point_de_rosee"])
     if "humidite" in df.columns:
-        df["humidity_pct"] = df["humidite"]
+        df["humidity_pct"] = _to_int(df["humidite"])
     if "pression" in df.columns:
-        df["pressure_hpa"] = df["pression"]
+        df["pressure_hpa"] = _to_float(df["pression"])
     if "vent_moyen" in df.columns:
-        df["wind_speed_ms"] = df["vent_moyen"]
+        df["wind_speed_ms"] = _to_float(df["vent_moyen"])
     if "vent_rafales" in df.columns:
-        df["wind_gust_ms"] = df["vent_rafales"]
+        df["wind_gust_ms"] = _to_float(df["vent_rafales"])
     if "vent_direction" in df.columns:
-        df["wind_direction_deg"] = df["vent_direction"]
+        df["wind_direction_deg"] = _to_float(df["vent_direction"])
     if "visibilite" in df.columns:
-        df["visibility_m"] = df["visibilite"]
+        df["visibility_m"] = _to_int(df["visibilite"])
     if "pluie_1h" in df.columns:
-        df["precip_accum_1h_mm"] = df["pluie_1h"]
+        df["precip_accum_1h_mm"] = _to_float(df["pluie_1h"])
 
 
     # Sélection finale des colonnes à conserver
@@ -167,3 +175,49 @@ def transform_infoclimat(df_raw: pd.DataFrame) -> pd.DataFrame:
     keep = [c for c in keep if c in df.columns]
 
     return df[keep]
+
+def build_stations(df_ic_meta: pd.DataFrame,
+                   wu_stations: list[dict]) -> pd.DataFrame:
+
+
+    # on extrait les stations Infoclimat depuis le dataframe correspondant
+    
+    df_ic = df_ic_meta.copy()
+
+
+    # Renommage des colonnes
+    rename_map = {
+        "id": "station_id",
+        "name": "station_name",
+        "latitude": "latitude",
+        "longitude": "longitude",
+        "elevation": "elevation_m",
+    }
+    df_ic = df_ic.rename(columns={k:v for k,v in rename_map.items() if k in df_ic.columns})
+
+    # Définition des colonnes à conserver 
+    keep = ["station_id", "station_name", "latitude", "longitude", "elevation_m", "type"]
+    keep = [c for c in keep if c in df_ic.columns]
+    df_ic = df_ic[keep].copy()
+
+    # ajout du nom de la ville = nom de la station
+    df_ic["city"] = df_ic["station_name"] 
+
+    # ajout de la source des données 
+    df_ic["source"] = "infoclimat"
+
+    # On transforme la liste de dictionnaire des stations WU en dataframe
+    df_wu = pd.DataFrame(wu_stations)
+
+    # Concaténation des 2 dataframes
+    df_stations = pd.concat([df_ic, df_wu], ignore_index=True)
+
+    # Convertit la colonne "state" en string pour éviter des erreurs futurs
+    df_stations["state"] = df_stations["state"].astype("string")
+
+    # typage simple
+    for col in ["latitude", "longitude", "elevation_m"]:
+        if col in df_stations.columns:
+            df_stations[col] = pd.to_numeric(df_stations[col], errors="coerce")
+
+    return df_stations

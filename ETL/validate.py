@@ -17,6 +17,23 @@ def validate_raw(df, name, output=None):
 
     print("\nDistinct values per column:\n", constant_values(df), file=out)
 
+def validate_processed(df, name, output=None):
+    out = output if output else None
+    
+    print(f"\n--- VALIDATION PROCESSED : {name} ---", file=out)
+
+    print(f"\n--- {name} ---", file=out)
+    print(profile_schema(df), file=out)
+
+
+    print("\nMissing values:", file=out)
+    print(missing_report(df).head(10), file=out)
+
+    print("\nDuplicate full rows:", duplicate_rows_count(df), file=out)
+    print("\nEmpty rows:", empty_rows_count(df), file=out)
+
+    print("\nDistinct values per column:\n", constant_values(df), file=out)
+    
 
 def profile_schema(df):
     lines = [
