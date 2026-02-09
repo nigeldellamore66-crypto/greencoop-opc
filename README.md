@@ -70,7 +70,6 @@ Des tests automatisés sont appliqués avant et après transformation :
 - vérification des types
 - détection des doublons
 - détection des valeurs manquantes
-- cohérence temporelle des mesures
 
 Les résultats des contrôles sont journalisés.
 
@@ -92,11 +91,19 @@ AWS_DEFAULT_REGION=XXX
 
 S3_BUCKET=green-and-coop-nigel
 
-INFOCLIMAT="raw/infoclimat/"
+INFOCLIMAT_RAW="raw/infoclimat/"
 
-ICHTEGEM="raw/weather-underground-ichtegem/"
+ICHTEGEM_RAW="raw/weather-underground-ichtegem/"
 
-MADELEINE="raw/weather-underground-madeleine/"
+MADELEINE_RAW="raw/weather-underground-madeleine/"
+
+INFOCLIMAT_PRO="processed/infoclimat/measurements_infoclimat.jsonl"
+
+ICHTEGEM_PRO="processed/ichtegem/measurements_ichtegem.jsonl"
+
+MADELEINE_PRO="processed/lamadeleine/measurements_madeleine.jsonl"
+
+STATIONS_PRO="processed/metadata/stations.jsonl"
 
 ---
 
