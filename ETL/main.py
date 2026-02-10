@@ -55,6 +55,7 @@ with open("validate_raw.txt", "w", encoding="utf-8") as f:
 df_ichtegem_trans=transform_wu_station(df_ichtegem,"IICHTE19")
 df_madeleine_trans=transform_wu_station(df_madeleine,"ILAMAD25")
 df_infoclimat_trans=transform_infoclimat(df_ic_data)
+
 # Construction du dataframe contenant les informations des stations
 
 df_stations = build_stations(df_ic_meta, wu_stations)

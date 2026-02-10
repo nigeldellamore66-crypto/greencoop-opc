@@ -120,6 +120,9 @@ def transform_wu_station(df_raw: pd.DataFrame, station_id: str) -> pd.DataFrame:
     # Ajout de l'id de la station
     df["station_id"] = station_id
 
+    # On supprime les doublons éventuels
+    df=df.drop_duplicates()
+
     # Sélection finale des colonnes à conserver
     keep = [
         "station_id", "timestamp",
@@ -164,6 +167,8 @@ def transform_infoclimat(df_raw: pd.DataFrame) -> pd.DataFrame:
     if "pluie_1h" in df.columns:
         df["precip_accum_1h_mm"] = _to_float(df["pluie_1h"])
 
+    # On supprime les doublons éventuels
+    df=df.drop_duplicates()
 
     # Sélection finale des colonnes à conserver
     keep = [
@@ -214,6 +219,9 @@ def build_stations(df_ic_meta: pd.DataFrame,
 
     # Convertit la colonne "state" en string pour éviter des erreurs futurs
     df_stations["state"] = df_stations["state"].astype("string")
+
+    # On supprime les doublons éventuels
+    df_stations=df_stations.drop_duplicates()
 
     # typage simple
     for col in ["latitude", "longitude", "elevation_m"]:
