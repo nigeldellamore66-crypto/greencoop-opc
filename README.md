@@ -1,7 +1,5 @@
 # greencoop-opc
 
-# Ingestion des données météorologiques
-
 ## Contexte
 Ce projet s’inscrit dans le cadre de *Forecast 2.0*, dont l’objectif est d’enrichir les modèles de prévision de la demande électrique de GreenAndCoop par l’intégration de nouvelles sources de données météorologiques (stations semi-professionnelles et amateurs).
 
@@ -118,3 +116,185 @@ STATIONS_PRO="processed/metadata/stations.jsonl"
 ## Notes
 - Les données brutes dans S3 ne doivent jamais être modifiées.
 - Toute transformation doit être versionnée et traçable.
+
+## Logique de transformation des données
+### Objectif
+
+La phase de transformation vise à :
+
+Harmoniser des sources hétérogènes (InfoClimat / Weather Underground)
+
+Uniformiser les unités et typages
+
+Standardiser les noms de colonnes
+
+Produire des données compatibles MongoDB et exploitables par les Data Scientists
+
+### Sources traitées
+Source	Format brut	Particularités
+InfoClimat	JSON	Données + métadonnées imbriquées
+Weather Underground	JSON (via Excel Airbyte)	Unités texte (°F, mph, in…)
+### Étapes de transformation
+1. Nettoyage initial
+
+Suppression des lignes entièrement vides
+
+Normalisation des noms de colonnes
+
+Extraction des champs utiles uniquement
+
+2. Harmonisation des timestamps
+
+Conversion en datetime
+
+Normalisation en UTC
+
+Exemple :
+
+2026-02-05T12:00:00Z
+
+3. Conversion des unités
+
+Weather Underground fournit des unités impériales :
+
+Variable	Conversion
+Température °F → °C	(F − 32) / 1.8
+Pression inHg → hPa	inHg × 33.8639
+Vent mph → m/s	mph × 0.44704
+Pluie inches → mm	in × 25.4
+
+5. Direction du vent
+
+Conversion cardinal → degrés :
+
+Direction	Degrés
+N	0°
+E	90°
+S	180°
+W	270°
+...
+
+### Schéma cible — Measurements
+
+Exemple de structure finale :
+
+{
+  station_id: str,
+  timestamp: datetime,
+  temperature_c: float,
+  humidity_pct: integer,
+  pressure_hpa: float,
+  wind_speed_ms: float,
+  wind_gust_ms: float,
+  wind_direction_deg: float,
+  precip_accum_1h_mm: float
+}
+
+### Transformation des stations
+
+Deux types de métadonnées sont consolidés :
+
+Stations InfoClimat (JSON stations)
+
+Stations WU (métadonnées fournies)
+
+Schéma final :
+
+{
+  station_id: str,
+  station_name: str,
+  latitude: float,
+  longitude: float,
+  elevation_m: float,
+  city: str,
+  source: str,
+  hardware: str,
+  software: str
+}
+
+## Fonctionnement du script de transformation
+
+Le script suit une logique modulaire :
+
+1. Extract
+
+Lecture des fichiers JSONL depuis S3 via s3_extract()
+Normalisation du champ _airbyte_data.
+
+2. Validate (raw)
+
+Tests d’intégrité :
+
+Colonnes présentes
+
+Valeurs manquantes
+
+Doublons
+
+Typage
+
+Rapport exporté dans validate_raw.txt.
+
+3. Transform
+
+Fonctions principales :
+
+transform_infoclimat(df)
+
+transform_wu_station(df, station_id)
+
+build_stations(df_meta, wu_meta)
+
+Chaque fonction :
+
+Nettoie
+
+Convertit unités
+
+Standardise schéma
+
+4. Validate (post-transform)
+
+Vérification :
+
+Schéma final
+
+Tests d’intégrité
+
+Rapport exporté dans validate_processed.txt.
+
+5. Load (S3 processed)
+
+Export en JSON Lines via :
+
+s3_upload(s3, bucket, key, df)
+
+Format :
+
+1 document / ligne
+
+Compatible MongoDB
+
+## Tests
+
+Les tests automatisés couvrent :
+
+- Extraction S3 (mock AWS)
+
+- Transformations
+
+- Validation
+
+- Pipeline end-to-end
+
+- Framework : pytest + moto.
+
+## Résultat
+
+Deux jeux de données prêts à l’import MongoDB :
+
+- measurements
+
+- stations
+  
+Stockés sur S3 dans /processed/
