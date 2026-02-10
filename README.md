@@ -36,15 +36,9 @@ Les données sont collectées depuis plusieurs sources hétérogènes (Excel, JS
 ### Organisation des données dans S3
 Les données sont stockées sous forme brute, sans transformation, selon la convention suivante :
 
-s3://green-and-coop-nigel/raw/infoclimat/fichier.json
-s3://green-and-coop-nigel/raw/weather-underground-ichtegem/fichier.json
-s3://green-and-coop-nigel/raw/weather-underground-madeleine/fichier.json
-
-
-Cette structure permet :
-- la rejouabilité des traitements
-- le partitionnement temporel
-- la traçabilité par source et par station
+- s3://green-and-coop-nigel/raw/infoclimat/fichier.json
+- s3://green-and-coop-nigel/raw/weather-underground-ichtegem/fichier.json
+- s3://green-and-coop-nigel/raw/weather-underground-madeleine/fichier.json
 
 ---
 
@@ -107,63 +101,35 @@ STATIONS_PRO="processed/metadata/stations.jsonl"
 
 ## Exécution
 1. Lancer la synchronisation Airbyte vers S3  
-2. Exécuter le script de transformation Python  
+2. Exécuter le script de transformation Python qui stocke les données transformées sur le S3 
 3. Vérifier les logs et les résultats des tests de qualité  
-4. Importer les données transformées dans MongoDB  
+4. Exécuter le script de migration qui importe les données dans une base MongoDB
 
 ---
 
-## Notes
-- Les données brutes dans S3 ne doivent jamais être modifiées.
-- Toute transformation doit être versionnée et traçable.
-
 ## Logique de transformation des données
+
 ### Objectif
 
 La phase de transformation vise à :
 
-Harmoniser des sources hétérogènes (InfoClimat / Weather Underground)
+- Harmoniser des sources hétérogènes (InfoClimat / Weather Underground)
+- Uniformiser les unités et typages
+- Standardiser les noms de colonnes
+- Produire des données compatibles MongoDB et exploitables par les Data Scientists
 
-Uniformiser les unités et typages
 
-Standardiser les noms de colonnes
-
-Produire des données compatibles MongoDB et exploitables par les Data Scientists
-
-### Sources traitées
-Source	Format brut	Particularités
-InfoClimat	JSON	Données + métadonnées imbriquées
-Weather Underground	JSON (via Excel Airbyte)	Unités texte (°F, mph, in…)
-### Étapes de transformation
-1. Nettoyage initial
-
-Suppression des lignes entièrement vides
-
-Normalisation des noms de colonnes
-
-Extraction des champs utiles uniquement
-
-2. Harmonisation des timestamps
-
-Conversion en datetime
-
-Normalisation en UTC
-
-Exemple :
-
-2026-02-05T12:00:00Z
-
-3. Conversion des unités
+### Conversion des unités
 
 Weather Underground fournit des unités impériales :
 
 Variable	Conversion
-Température °F → °C	(F − 32) / 1.8
-Pression inHg → hPa	inHg × 33.8639
-Vent mph → m/s	mph × 0.44704
-Pluie inches → mm	in × 25.4
+Température °F → °C:	(F − 32) / 1.8
+Pression inHg → hPa:	inHg × 33.8639
+Vent mph → m/s	mph: × 0.44704
+Pluie inches → mm:	in × 25.4
 
-5. Direction du vent
+### Direction du vent
 
 Conversion cardinal → degrés :
 
@@ -178,92 +144,81 @@ W	270°
 
 Exemple de structure finale :
 
-{
-  station_id: str,
-  timestamp: datetime,
-  temperature_c: float,
-  humidity_pct: integer,
-  pressure_hpa: float,
-  wind_speed_ms: float,
-  wind_gust_ms: float,
-  wind_direction_deg: float,
-  precip_accum_1h_mm: float
-}
+  - station_id: str
+  - timestamp: datetime
+  - temperature_c: float
+  - humidity_pct: integer
+  - pressure_hpa: float
+  - wind_speed_ms: float
+  - wind_gust_ms: float
+  - wind_direction_deg: float
+  - precip_accum_mm: float
+  - precip_accum_1h_mm: float
+  - uv: integer
+  - solar_w_sqm: float
 
-### Transformation des stations
+### Schéma cible - Stations
 
 Deux types de métadonnées sont consolidés :
 
-Stations InfoClimat (JSON stations)
-
-Stations WU (métadonnées fournies)
+- Stations InfoClimat (JSON stations)
+- Stations WU (métadonnées fournies)
 
 Schéma final :
 
-{
-  station_id: str,
-  station_name: str,
-  latitude: float,
-  longitude: float,
-  elevation_m: float,
-  city: str,
-  source: str,
-  hardware: str,
-  software: str
-}
+ - station_id: str
+ - station_name: str
+ - latitude: float
+ - longitude: float
+ - elevation_m: float
+ - city: str
+ - source: str
+ - hardware: str
+ - software: str
+
+---
 
 ## Fonctionnement du script de transformation
 
 Le script suit une logique modulaire :
 
-1. Extract
+### Extract
 
 Lecture des fichiers JSONL depuis S3 via s3_extract()
 Normalisation du champ _airbyte_data.
 
-2. Validate (raw)
+### Validate (raw)
 
-Tests d’intégrité :
-
-Colonnes présentes
-
-Valeurs manquantes
-
-Doublons
-
-Typage
+Tests d’intégrité (
+Schéma des données,
+Colonnes présentes,
+Valeurs manquantes,
+Doublons,
+Typage)
 
 Rapport exporté dans validate_raw.txt.
 
-3. Transform
+### Transform
 
 Fonctions principales :
 
-transform_infoclimat(df)
-
-transform_wu_station(df, station_id)
-
-build_stations(df_meta, wu_meta)
+- transform_infoclimat(df)
+- transform_wu_station(df, station_id)
+- build_stations(df_meta, wu_meta)
 
 Chaque fonction :
 
-Nettoie
+- Nettoie
+- Convertit unités
+- Standardise schéma
 
-Convertit unités
-
-Standardise schéma
-
-4. Validate (post-transform)
-
-Vérification :
-
-Schéma final
+### Validate (post-transform)
 
 Tests d’intégrité
 
 Rapport exporté dans validate_processed.txt.
 
-5. Load (S3 processed)
+### Load (S3 processed)
 
 Export en JSON Lines via :
 
@@ -272,7 +227,6 @@ s3_upload(s3, bucket, key, df)
 Format :
 
 1 document / ligne
-
 Compatible MongoDB
 
 ## Tests
@@ -280,21 +234,15 @@ Compatible MongoDB
 Les tests automatisés couvrent :
 
 - Extraction S3 (mock AWS)
-
 - Transformations
-
 - Validation
-
 - Pipeline end-to-end
-
-- Framework : pytest + moto.
 
 ## Résultat
 
-Deux jeux de données prêts à l’import MongoDB :
+Quatre jeux de données prêts à l’import MongoDB :
 
-- measurements
+- 3 measurements
+- 1 stations
 
-- stations
-  
 Stockés sur S3 dans /processed/
