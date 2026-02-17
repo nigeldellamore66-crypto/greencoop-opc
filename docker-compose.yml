@@ -1,0 +1,189 @@
+services:
+
+  mongo-keyfile:
+    image: mongo:7.0
+    container_name: mongo-keyfile
+    entrypoint: >
+      bash -c '
+        if [ ! -f /keyfile/keyfile ]; then
+          openssl rand -base64 756 > /keyfile/keyfile;
+          chmod 400 /keyfile/keyfile;
+          chown 999:999 /keyfile/keyfile;
+        fi
+      '
+    volumes:
+      - mongo_keyfile:/keyfile
+
+    restart: "no"
+  # MongoDB Replica Set - Instance 1 (Primary)
+  mongo1:
+    image: mongo:7.0
+    depends_on:
+      mongo-keyfile:
+        condition: service_completed_successfully
+    container_name: mongo1
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017","--keyFile","/etc/mongo-keyfile/keyfile"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo1_data:/data/db
+      - mongo1_config:/data/configdb
+      - mongo_keyfile:/etc/mongo-keyfile:ro
+    networks:
+      - mongo-network
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
+  # MongoDB Replica Set - Instance 2
+  mongo2:
+    image: mongo:7.0
+    depends_on:
+      mongo-keyfile:
+        condition: service_completed_successfully
+    container_name: mongo2
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27018","--keyFile","/etc/mongo-keyfile/keyfile"]
+    ports:
+      - "27018:27018"
+    volumes:
+      - mongo2_data:/data/db
+      - mongo2_config:/data/configdb
+      - mongo_keyfile:/etc/mongo-keyfile:ro
+    networks:
+      - mongo-network
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
+  # MongoDB Replica Set - Instance 3
+  mongo3:
+    image: mongo:7.0
+    depends_on:
+      mongo-keyfile:
+        condition: service_completed_successfully
+    container_name: mongo3
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27019","--keyFile","/etc/mongo-keyfile/keyfile"]
+    ports:
+      - "27019:27019"
+    volumes:
+      - mongo3_data:/data/db
+      - mongo3_config:/data/configdb
+      - mongo_keyfile:/etc/mongo-keyfile:ro
+    networks:
+      - mongo-network
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Initialisation du Replica Set
+  mongo-init:
+    image: mongo:7.0
+    container_name: mongo-init
+    depends_on:
+      mongo1:
+        condition: service_healthy
+    networks:
+      - mongo-network
+    command: >
+      bash -c "
+      sleep 3 &&
+      mongosh --host mongo1:27017 -u admin -p admin123 --authenticationDatabase admin --quiet --eval '
+        try {
+          const s = rs.status();
+          if (s.ok === 1) { print(\"Already initialized\"); quit(0); }
+        } catch (e) {}
+        rs.initiate({
+          _id: \"rs0\",
+          members: [
+            { _id: 0, host: \"mongo1:27017\", priority: 2 },
+            { _id: 1, host: \"mongo2:27018\", priority: 1 },
+            { _id: 2, host: \"mongo3:27019\", priority: 1 }
+          ]
+        });
+      ' &&
+      mongosh --host mongo1:27017 -u admin -p admin123 --authenticationDatabase admin --quiet --eval 'rs.status().ok'
+      "
+    restart: "no"
+  
+  # Service ETL - Collecte et Transformation
+  etl:
+    build:
+      context: ./ETL
+      dockerfile: Dockerfile
+    container_name: etl-service
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./ETL:/app
+      - etl_data:/data
+      - etl_logs:/app/logs
+    
+    env_file:
+      - ./ETL/.env
+    
+    environment:
+      - MONGO_HOST=mongo1:27017,mongo2:27018,mongo3:27019
+
+      - PYTHONUNBUFFERED=1
+    
+    networks:
+      - mongo-network
+    restart: no
+
+  # Service MIG - Migration des données
+  mig:
+    build:
+      context: ./MIG
+      dockerfile: Dockerfile
+    container_name: mig-service
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./MIG:/app
+      - mig_logs:/app/logs    
+    env_file:
+      - ./MIG/.env
+    
+    environment:
+      - MONGO_HOST=mongo1:27017,mongo2:27018,mongo3:27019
+      - PYTHONUNBUFFERED=1
+    
+    networks:
+      - mongo-network
+    
+    restart: no
+
+networks:
+  mongo-network:
+    driver: bridge
+
+volumes:
+  mongo1_data:
+  mongo1_config:
+  mongo2_data:
+  mongo2_config:
+  mongo3_data:
+  mongo3_config:
+  etl_data:
+  etl_logs:
+  mig_logs:
+  mongo_keyfile:

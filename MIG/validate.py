@@ -28,16 +28,12 @@ def calculer_taux_erreur(db, collection_name, dataframes_sources):
         print(f"Perte: {perte} documents ({taux_erreur:.2f}%)")
         succes = False
     
-    # 4. Vérifier par source (optionnel mais utile)
+    # 4. Vérifier par source 
     print("\nDétail par source:")
     for nom, df in dataframes_sources:
         attendu = len(df)
         recu = collection.count_documents({'source': nom})
-        
-        if recu == attendu:
-            print(f"  {nom}: {recu}/{attendu}")
-        else:
-            print(f"  {nom}: {recu}/{attendu}")
+        print(f"  {nom}: {recu}/{attendu}")
     
     print("="*50)
     

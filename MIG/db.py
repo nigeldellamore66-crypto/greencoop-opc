@@ -39,4 +39,4 @@ def index_unique(db, collectionname):
         ],
         unique=True
     )
-    print("Index unique appliqué sur (staton_id, timestamp)")
+    print(f"Index unique appliqué sur la collection ", collectionname)

@@ -43,7 +43,7 @@ df_ic_meta,df_ic_data=split_infoclimat(df_infoclimat)
 
 # Validation avant transformation
 
-with open("validate_raw.txt", "w", encoding="utf-8") as f:
+with open("/data/validate_raw.txt", "w", encoding="utf-8") as f:
     validate_raw(df_ic_meta, "Infoclimat - Metadata", output=f)
     validate_raw(df_ic_data, "Infoclimat - Data", output=f)
     validate_raw(df_ichtegem, "Ichtegem", output=f)
@@ -62,7 +62,7 @@ df_stations = build_stations(df_ic_meta, wu_stations)
 
 # Validation après transformation
 
-with open("validate_processed.txt", "w", encoding="utf-8") as f:
+with open("/data/validate_processed.txt", "w", encoding="utf-8") as f:
     validate_processed(df_stations, "Infos stations", output=f)
     validate_processed(df_infoclimat_trans, "Infoclimat", output=f)
     validate_processed(df_ichtegem_trans, "Ichtegem", output=f)

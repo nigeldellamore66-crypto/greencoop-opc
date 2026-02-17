@@ -8,6 +8,7 @@ from validate import calculer_taux_erreur
 
 # Chargement des variables d'environnement
 load_dotenv()
+# Connection Bucket AWS
 access_key = os.getenv("AWS_ACCESS_KEY_ID")
 secret_access = os.getenv("AWS_SECRET_ACCESS_KEY")
 region = os.getenv("AWS_DEFAULT_REGION")
@@ -25,20 +26,13 @@ MONGO_ADMIN=os.getenv("MONGO_ADMIN")
 ADMIN_PWD=os.getenv("ADMIN_PWD")
 MONGO_USER = os.getenv("MONGO_USER")
 MONGO_PWD = os.getenv("MONGO_PWD")
-MONGO_HOST = os.getenv("MONGO_HOST", "localhost")
+MONGO_HOST = os.getenv("MONGO_HOST")
 
-# Test si authentification nécessaire
-USE_AUTH = os.getenv("MONGO_USE_AUTH", "true").lower() == "true"
 
-if USE_AUTH:
-    MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PWD}@{MONGO_HOST}:27017/{DB_NAME}?authSource=admin"
-    MONGO_ADMIN_URI = f"mongodb://{MONGO_ADMIN}:{ADMIN_PWD}@{MONGO_HOST}:27017/admin"
-else:
-    # Sans authentification
-    MONGO_URI = f"mongodb://{MONGO_HOST}:27017/{DB_NAME}"
-    MONGO_ADMIN_URI = f"mongodb://{MONGO_HOST}:27017/admin"
+MONGO_URI = os.getenv("MONGO_URI")
+MONGO_ADMIN_URI = os.getenv("MONGO_ADMIN_URI")
 
-print(f"Mode: {'Avec authentification' if USE_AUTH else 'Sans authentification'}")
+
 
 # Noms des collections
 COLLECTION_METEO = os.getenv("COLLECTION_MEASURES")
