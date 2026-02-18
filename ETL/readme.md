@@ -81,21 +81,20 @@ La phase de transformation vise à :
 
 Weather Underground fournit des unités impériales :
 
-Variable	Conversion
-Température °F → °C:	(F − 32) / 1.8
-Pression inHg → hPa:	inHg × 33.8639
-Vent mph → m/s	mph: × 0.44704
-Pluie inches → mm:	in × 25.4
+- Température °F → °C:	(F − 32) / 1.8
+- Pression inHg → hPa:	inHg × 33.8639
+- Vent mph → m/s	mph: × 0.44704
+- Pluie inches → mm:	in × 25.4
 
 ### Direction du vent
 
 Conversion cardinal → degrés :
 
 Direction	Degrés
-N	0°
-E	90°
-S	180°
-W	270°
+- N	0°
+- E	90°
+- S	180°
+- W	270°
 ...
 
 ### Schéma cible — Measurements
@@ -204,3 +203,5 @@ Quatre jeux de données prêts à l’import MongoDB :
 - 1 stations
 
 Stockés sur S3 dans /processed/
+
+2 rapports d'intégrité des données avant et après transformation, stockés sur S3 dans /reports/
