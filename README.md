@@ -1,248 +1,130 @@
-# greencoop-opc
+# Pipeline ETL météo — Airbyte · S3 · MongoDB
 
-## Contexte
-Ce projet s’inscrit dans le cadre de *Forecast 2.0*, dont l’objectif est d’enrichir les modèles de prévision de la demande électrique de GreenAndCoop par l’intégration de nouvelles sources de données météorologiques (stations semi-professionnelles et amateurs).
+> Collecte, transformation et ingestion de données météorologiques
+> multi-sources (stations semi-professionnelles et amateurs) dans MongoDB,
+> dans le cadre du projet Forecast 2.0 de GreenAndCoop.
 
-Les données sont collectées depuis plusieurs sources hétérogènes (Excel, JSON), stockées dans un bucket S3, puis préparées pour une ingestion dans MongoDB.
+## Contexte & objectif
 
----
+GreenAndCoop cherche à enrichir ses modèles de prévision de la demande
+électrique avec de nouvelles sources de données météorologiques.
 
-## Architecture globale
-1. Collecte des données via Airbyte  
-2. Stockage brut des données dans un bucket Amazon S3  
-3. Transformation des données via un script Python  
-4. Préparation des données pour une ingestion dans MongoDB  
+Ce pipeline collecte des données depuis des stations InfoClimat et Weather
+Underground, les stocke brutes sur S3, les transforme et les prépare
+pour ingestion dans MongoDB.
 
----
+## Stack technique
 
-## Ingestion des données
+`Python` `Airbyte` `Amazon S3` `MongoDB` `Pytest` `Docker`
 
-### Outil
-- **Airbyte**
+## Architecture
+```
+Stations météo (InfoClimat / Weather Underground)
+        │
+        ▼
+    [Airbyte]  ←  collecte multi-sources (Excel, JSON)
+        │
+        ▼
+  [Amazon S3]  ←  stockage brut (raw/)
+        │
+        ▼
+ [Script ETL]  ←  normalisation, conversion d'unités, tests qualité
+        │
+        ▼
+  [Amazon S3]  ←  données transformées (processed/)
+        │
+        ▼
+ [Script MIG]  ←  migration vers MongoDB
+        │
+        ▼
+   [MongoDB]  ←  ingestion finale
+```
 
-### Sources
-- Réseau InfoClimat (stations : Bergues, Hazebrouck, Armentières, Lille-Lesquin)
-- Weather Underground :
-  - Station ILAMAD25 (La Madeleine, France)
-  - Station IICHTE19 (Ichtegem, Belgique)
+## Structure du repo
+```
+├── ETL/                    # Script de transformation et tests qualité
+├── MIG/                    # Script de migration vers MongoDB
+├── docker-compose.yml      # Orchestration des deux scripts
+└── README.md
+```
 
-### Formats
-- Excel (InfoClimat)
-- JSON (Weather Underground)
+## Schéma des données produites
 
-### Destination
-- **Amazon S3** (zone de données brutes)
+**Measurements** (3 jeux de données — 1 par source)
 
-### Organisation des données dans S3
-Les données sont stockées sous forme brute, sans transformation, selon la convention suivante :
+| Champ | Type |
+|---|---|
+| `station_id` | str |
+| `timestamp` | datetime |
+| `temperature_c` | float |
+| `humidity_pct` | integer |
+| `pressure_hpa` | float |
+| `wind_speed_ms` | float |
+| `wind_direction_deg` | float |
+| `precip_accum_mm` | float |
 
-- s3://green-and-coop-nigel/raw/infoclimat/fichier.json
-- s3://green-and-coop-nigel/raw/weather-underground-ichtegem/fichier.json
-- s3://green-and-coop-nigel/raw/weather-underground-madeleine/fichier.json
+**Stations** (métadonnées consolidées)
 
----
+| Champ | Type |
+|---|---|
+| `station_id` | str |
+| `station_name` | str |
+| `latitude / longitude` | float |
+| `elevation_m` | float |
+| `source` | str |
 
-## Transformation des données
+## Installation
+```bash
+git clone https://github.com/nigeldellamore66-crypto/OPC-Pipeline-ETL-meteo
+# Créer le fichier .env et renseigner les clés AWS et les chemins S3
+```
 
-Les données brutes sont transformées via un script Python afin de :
-- normaliser les noms de champs
-- harmoniser les formats de dates
-- typer correctement les variables
-- enrichir les données avec les métadonnées des stations
-- produire un format compatible avec MongoDB (documents JSON)
-
-Le script ne modifie pas les données sources mais génère un nouveau jeu de données transformées.
-
----
-
-## Contrôles qualité des données
-
-Des tests automatisés sont appliqués avant et après transformation :
-- présence des champs attendus
-- vérification des types
-- détection des doublons
-- détection des valeurs manquantes
-
-Les résultats des contrôles sont journalisés.
-
----
-
-## Dépendances
-Les dépendances Python nécessaires au projet sont listées dans le fichier : requirements.txt
-
----
-
-## Environnement
-Un fichier .env contenant les variables d'environnement suivantes est requis pour le fonctionnement du script:
-
+Variables d'environnement requises dans `.env` :
+```env
 AWS_ACCESS_KEY_ID=XXX
-
 AWS_SECRET_ACCESS_KEY=XXX
-
 AWS_DEFAULT_REGION=XXX
-
 S3_BUCKET=green-and-coop-nigel
 
-INFOCLIMAT_RAW="raw/infoclimat/"
+INFOCLIMAT_RAW=raw/infoclimat/
+ICHTEGEM_RAW=raw/weather-underground-ichtegem/
+MADELEINE_RAW=raw/weather-underground-madeleine/
 
-ICHTEGEM_RAW="raw/weather-underground-ichtegem/"
-
-MADELEINE_RAW="raw/weather-underground-madeleine/"
-
-INFOCLIMAT_PRO="processed/infoclimat/measurements_infoclimat.jsonl"
-
-ICHTEGEM_PRO="processed/ichtegem/measurements_ichtegem.jsonl"
-
-MADELEINE_PRO="processed/lamadeleine/measurements_madeleine.jsonl"
-
-STATIONS_PRO="processed/metadata/stations.jsonl"
-
----
+INFOCLIMAT_PRO=processed/infoclimat/measurements_infoclimat.jsonl
+ICHTEGEM_PRO=processed/ichtegem/measurements_ichtegem.jsonl
+MADELEINE_PRO=processed/lamadeleine/measurements_lamadeleine.jsonl
+STATIONS_PRO=processed/metadata/stations.jsonl
+```
 
 ## Exécution
-1. Lancer la synchronisation Airbyte vers S3  
-2. Exécuter le script de transformation Python qui stocke les données transformées sur le S3 
-3. Vérifier les logs et les résultats des tests de qualité  
-4. Exécuter le script de migration qui importe les données dans une base MongoDB
 
----
+Prérequis : Docker installé
+```bash
+docker compose up -d
+```
 
-## Logique de transformation des données
+Le `docker-compose.yml` orchestre automatiquement :
+1. **ETL** — extraction depuis S3, transformation, tests qualité, stockage S3
+2. **MIG** — migration des données transformées vers MongoDB
 
-### Objectif
-
-La phase de transformation vise à :
-
-- Harmoniser des sources hétérogènes (InfoClimat / Weather Underground)
-- Uniformiser les unités et typages
-- Standardiser les noms de colonnes
-- Produire des données compatibles MongoDB et exploitables par les Data Scientists
-
-
-### Conversion des unités
-
-Weather Underground fournit des unités impériales :
-
-Variable	Conversion
-Température °F → °C:	(F − 32) / 1.8
-Pression inHg → hPa:	inHg × 33.8639
-Vent mph → m/s	mph: × 0.44704
-Pluie inches → mm:	in × 25.4
-
-### Direction du vent
-
-Conversion cardinal → degrés :
-
-Direction	Degrés
-N	0°
-E	90°
-S	180°
-W	270°
-...
-
-### Schéma cible — Measurements
-
-Exemple de structure finale :
-
-  - station_id: str
-  - timestamp: datetime
-  - temperature_c: float
-  - humidity_pct: integer
-  - pressure_hpa: float
-  - wind_speed_ms: float
-  - wind_gust_ms: float
-  - wind_direction_deg: float
-  - precip_accum_mm: float
-  - precip_accum_1h_mm: float
-  - uv: integer
-  - solar_w_sqm: float
-
-### Schéma cible - Stations
-
-Deux types de métadonnées sont consolidés :
-
-- Stations InfoClimat (JSON stations)
-- Stations WU (métadonnées fournies)
-
-Schéma final :
-
- - station_id: str
- - station_name: str
- - latitude: float
- - longitude: float
- - elevation_m: float
- - city: str
- - source: str
- - hardware: str
- - software: str
-
----
-
-## Fonctionnement du script de transformation
-
-Le script suit une logique modulaire :
-
-### Extract
-
-Lecture des fichiers JSONL depuis S3 via s3_extract()
-Normalisation du champ _airbyte_data.
-
-### Validate (raw)
-
-Tests d’intégrité (
-Schéma des données,
-Colonnes présentes,
-Valeurs manquantes,
-Doublons,
-Typage)
-
-Rapport exporté dans validate_raw.txt.
-
-### Transform
-
-Fonctions principales :
-
-- transform_infoclimat(df)
-- transform_wu_station(df, station_id)
-- build_stations(df_meta, wu_meta)
-
-Chaque fonction :
-
-- Nettoie
-- Convertit unités
-- Standardise schéma
-
-### Validate (post-transform)
-
-Tests d’intégrité
-
-Rapport exporté dans validate_processed.txt.
-
-### Load (S3 processed)
-
-Export en JSON Lines via :
-
-s3_upload(s3, bucket, key, df)
-
-Format :
-
-1 document / ligne
-Compatible MongoDB
+Les rapports de qualité sont générés à chaque exécution :
+- `validate_raw.txt` — contrôles avant transformation
+- `validate_processed.txt` — contrôles après transformation
 
 ## Tests
+```bash
+pytest ETL/tests/
+```
 
-Les tests automatisés couvrent :
+Les tests couvrent l'extraction S3 (mock AWS), les transformations,
+la validation et le pipeline end-to-end.
 
-- Extraction S3 (mock AWS)
-- Transformations
-- Validation
-- Pipeline end-to-end
+## Apprentissages clés
 
-## Résultat
-
-Quatre jeux de données prêts à l’import MongoDB :
-
-- 3 measurements
-- 1 stations
-
-Stockés sur S3 dans /processed/
+- Mise en place d'un pipeline ETL complet de bout en bout
+- Intégration d'Airbyte pour la collecte multi-sources hétérogènes
+- Normalisation de données météo (conversion unités impériales → métriques,
+  harmonisation de schémas)
+- Tests de qualité automatisés à chaque étape avec Pytest
+- Orchestration de scripts via Docker Compose
+- Travail avec des services cloud AWS S3 et MongoDB
